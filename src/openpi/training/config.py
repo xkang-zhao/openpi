@@ -18,6 +18,7 @@ import openpi.models.pi0_config as pi0_config
 import openpi.models.pi0_fast as pi0_fast
 import openpi.models.tokenizer as _tokenizer
 import openpi.policies.aloha_policy as aloha_policy
+import openpi.policies.auto_stack_policy as auto_stack_policy
 import openpi.policies.droid_policy as droid_policy
 import openpi.policies.libero_policy as libero_policy
 import openpi.shared.download as _download
@@ -929,6 +930,26 @@ _CONFIGS = [
         ),
         weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_base/params"),
         num_train_steps=20_000,
+    ),
+    #
+    # AutoStack configs.
+    #
+    TrainConfig(
+        name="pi0_auto_stack",
+        model=pi0_config.Pi0Config(action_dim=7, action_horizon=10),
+        data=SimpleDataConfig(
+            repo_id="local/auto_stack",
+            assets=AssetsConfig(asset_id="auto_stack"),
+            data_transforms=lambda model: _transforms.Group(
+                inputs=[auto_stack_policy.AutoStackInputs(model_type=model.model_type.value)],
+                outputs=[auto_stack_policy.AutoStackOutputs()],
+            ),
+            base_config=DataConfig(
+                prompt_from_task=True,
+            ),
+        ),
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_base/params"),
+        num_train_steps=30_000,
     ),
     #
     # Debugging configs.
