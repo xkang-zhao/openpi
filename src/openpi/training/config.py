@@ -951,6 +951,23 @@ _CONFIGS = [
         weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_base/params"),
         num_train_steps=30_000,
     ),
+    TrainConfig(
+        name="pi05_auto_stack",
+        model=pi0_config.Pi0Config(pi05=True, action_dim=7, action_horizon=10),
+        data=SimpleDataConfig(
+            repo_id="/zxk/my_openpi/auto_stack",
+            assets=AssetsConfig(asset_id="auto_stack"),
+            data_transforms=lambda model: _transforms.Group(
+                inputs=[auto_stack_policy.AutoStackInputs(model_type=model.model_type.value)],
+                outputs=[auto_stack_policy.AutoStackOutputs()],
+            ),
+            base_config=DataConfig(
+                prompt_from_task=True,
+            ),
+        ),
+        weight_loader=weight_loaders.CheckpointWeightLoader("/zxk/my_openpi/pi05_base/params"),
+        num_train_steps=30_000,
+    ),
     #
     # Debugging configs.
     #
