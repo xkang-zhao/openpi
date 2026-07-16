@@ -953,7 +953,7 @@ _CONFIGS = [
     ),
     TrainConfig(
         name="pi05_auto_stack",
-        model=pi0_config.Pi0Config(pi05=True, action_dim=7, action_horizon=10),
+        model=pi0_config.Pi0Config(pi05=True, action_horizon=10),
         data=SimpleDataConfig(
             repo_id="/zxk/my_openpi/auto_stack",
             assets=AssetsConfig(asset_id="auto_stack"),
@@ -965,11 +965,20 @@ _CONFIGS = [
                 prompt_from_task=True,
             ),
         ),
+        batch_size=32,
+        lr_schedule=_optimizer.CosineDecaySchedule(
+            warmup_steps=10_000,
+            peak_lr=5e-5,
+            decay_steps=1_000_000,
+            decay_lr=5e-5,
+        ),
+        optimizer=_optimizer.AdamW(clip_gradient_norm=1.0),
+        ema_decay=0.999,
         weight_loader=weight_loaders.CheckpointWeightLoader("/zxk/my_openpi/pi05_base/params"),
-        num_train_steps=30_000,
+        num_train_steps=10_000,
     ),
     #
-    # Debugging configs.
+    # Debugging configs. 
     #
     TrainConfig(
         name="debug",

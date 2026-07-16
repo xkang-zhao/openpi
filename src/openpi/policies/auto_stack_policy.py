@@ -5,6 +5,7 @@ import einops
 import numpy as np
 
 from openpi import transforms
+from openpi.models import model as _model
 
 
 def make_auto_stack_example() -> dict:
@@ -48,40 +49,21 @@ class AutoStackInputs(transforms.DataTransformFn):
         base_image = _parse_image(in_images["top_camera"])
         wrist_image = _parse_image(in_images["wrist_camera"])
 
-        match self.model_type:
-            case "pi0" | "pi05":
-                images = {
-                    "base_0_rgb": base_image,
-                    "left_wrist_0_rgb": wrist_image,
-                    "right_wrist_0_rgb": np.zeros_like(base_image),
-                }
-                image_masks = {
-                    "base_0_rgb": np.True_,
-                    "left_wrist_0_rgb": np.True_,
-                    "right_wrist_0_rgb": np.False_,
-                }
-            case "pi0_fast":
-                images = {
-                    "base_0_rgb": base_image,
-                    "left_wrist_0_rgb": wrist_image,
-                    "right_wrist_0_rgb": np.zeros_like(base_image),
-                }
-                image_masks = {
-                    "base_0_rgb": np.True_,
-                    "left_wrist_0_rgb": np.True_,
-                    "right_wrist_0_rgb": np.True_,
-                }
-            case _:
-                raise ValueError(f"Unsupported model type: {self.model_type}")
-
-        state = np.asarray(data["observation.state"])
-        if state.shape[0] > 7:
-            state = state[:7]
-
+        # Create inputs dict. Do not change the keys in the dict below.
         inputs = {
-            "image": images,
-            "image_mask": image_masks,
-            "state": state,
+            "state": data["observation.state"],
+            "image": {
+                "base_0_rgb": base_image,
+                "left_wrist_0_rgb": wrist_image,
+                # Pad any non-existent images with zero-arrays of the appropriate shape.
+                "right_wrist_0_rgb": np.zeros_like(base_image),
+            },
+            "image_mask": {
+                "base_0_rgb": np.True_,
+                "left_wrist_0_rgb": np.True_,
+                # We only mask padding images for pi0 model, not pi0-FAST. Do not change this for your own dataset.
+                "right_wrist_0_rgb": np.True_ if self.model_type == _model.ModelType.PI0_FAST else np.False_,
+            },
         }
 
         if "action" in data:
