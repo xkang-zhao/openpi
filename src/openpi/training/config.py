@@ -956,7 +956,7 @@ _CONFIGS = [
         model=pi0_config.Pi0Config(pi05=True, action_horizon=10),
         data=SimpleDataConfig(
             repo_id="/zxk/my_openpi/auto_stack",
-            assets=AssetsConfig(asset_id="auto_stack"),
+            assets=AssetsConfig(asset_id="/zxk/my_openpi/auto_stack"),
             data_transforms=lambda model: _transforms.Group(
                 inputs=[auto_stack_policy.AutoStackInputs(model_type=model.model_type.value)],
                 outputs=[auto_stack_policy.AutoStackOutputs()],
