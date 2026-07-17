@@ -515,6 +515,11 @@ class TrainConfig:
     log_interval: int = 100
     # How often (in steps) to save checkpoints.
     save_interval: int = 1000
+
+    # If true, save only inference weights and assets, without optimizer or training state.
+    # Checkpoints created this way cannot be resumed with --resume.
+    save_weights_only: bool = False
+
     # If set, any existing checkpoints matching step % keep_period == 0 will not be deleted.
     keep_period: int | None = 5000
 
@@ -555,6 +560,11 @@ class TrainConfig:
     def __post_init__(self) -> None:
         if self.resume and self.overwrite:
             raise ValueError("Cannot resume and overwrite at the same time.")
+
+        if self.save_weights_only and self.resume:
+            raise ValueError(
+                "Cannot resume training when save_weights_only=True because optimizer and training state are not saved."
+            )
 
 
 # Use `get_config` if you need to get a config by name in your code.
@@ -963,6 +973,7 @@ _CONFIGS = [
             ),
             base_config=DataConfig(
                 prompt_from_task=True,
+                action_sequence_keys=("action",),
             ),
         ),
         batch_size=32,
@@ -976,9 +987,11 @@ _CONFIGS = [
         ema_decay=0.999,
         weight_loader=weight_loaders.CheckpointWeightLoader("/zxk/my_openpi/pi05_base/params"),
         num_train_steps=10_000,
+        save_interval=50,
+        save_weights_only=True,
     ),
     #
-    # Debugging configs. 
+    # Debugging configs.
     #
     TrainConfig(
         name="debug",

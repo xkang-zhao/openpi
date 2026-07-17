@@ -166,16 +166,22 @@ def save_checkpoint(model, optimizer, global_step, config, is_main, data_config)
         model_to_save = model.module if isinstance(model, torch.nn.parallel.DistributedDataParallel) else model
         safetensors.torch.save_model(model_to_save, tmp_ckpt_dir / "model.safetensors")
 
-        # Save optimizer state using PyTorch format
-        torch.save(optimizer.state_dict(), tmp_ckpt_dir / "optimizer.pt")
+        # Save resumable training state only when requested.
+        if not config.save_weights_only:
+            torch.save(
+                optimizer.state_dict(),
+                tmp_ckpt_dir / "optimizer.pt",
+            )
 
-        # Save training metadata (avoid saving full config to prevent JAX/Flax compatibility issues)
-        metadata = {
-            "global_step": global_step,
-            "config": dataclasses.asdict(config),
-            "timestamp": time.time(),
-        }
-        torch.save(metadata, tmp_ckpt_dir / "metadata.pt")
+            metadata = {
+                "global_step": global_step,
+                "config": dataclasses.asdict(config),
+                "timestamp": time.time(),
+            }
+            torch.save(
+                metadata,
+                tmp_ckpt_dir / "metadata.pt",
+            )
 
         # save norm stats
         norm_stats = data_config.norm_stats

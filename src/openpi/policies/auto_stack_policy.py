@@ -42,12 +42,8 @@ class AutoStackInputs(transforms.DataTransformFn):
     EXPECTED_CAMERAS: ClassVar[tuple[str, ...]] = ("top_camera", "wrist_camera")
 
     def __call__(self, data: dict) -> dict:
-        in_images = data.get("observation.images", {})
-        if set(in_images.keys()) - set(self.EXPECTED_CAMERAS):
-            raise ValueError(f"Expected images to contain {self.EXPECTED_CAMERAS}, got {tuple(in_images)}")
-
-        base_image = _parse_image(in_images["top_camera"])
-        wrist_image = _parse_image(in_images["wrist_camera"])
+        base_image = _parse_image(data["observation.images.top_camera"])
+        wrist_image = _parse_image(data["observation.images.wrist_camera"])
 
         # Create inputs dict. Do not change the keys in the dict below.
         inputs = {

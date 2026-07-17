@@ -18,7 +18,12 @@ import openpi.training.utils as training_utils
 
 
 def initialize_checkpoint_dir(
-    checkpoint_dir: epath.Path | str, *, keep_period: int | None, overwrite: bool, resume: bool
+    checkpoint_dir: epath.Path | str,
+    *,
+    keep_period: int | None,
+    overwrite: bool,
+    resume: bool,
+    save_weights_only: bool = False,
 ) -> tuple[ocp.CheckpointManager, bool]:
     checkpoint_dir = epath.Path(checkpoint_dir).resolve()
     resuming = False
@@ -37,13 +42,17 @@ def initialize_checkpoint_dir(
 
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
+    item_handlers = {
+        "assets": CallbackHandler(),
+        "params": ocp.PyTreeCheckpointHandler(),
+    }
+
+    if not save_weights_only:
+        item_handlers["train_state"] = ocp.PyTreeCheckpointHandler()
+
     mngr = ocp.CheckpointManager(
         checkpoint_dir,
-        item_handlers={
-            "assets": CallbackHandler(),
-            "train_state": ocp.PyTreeCheckpointHandler(),
-            "params": ocp.PyTreeCheckpointHandler(),
-        },
+        item_handlers=item_handlers,
         options=ocp.CheckpointManagerOptions(
             max_to_keep=1,
             keep_period=keep_period,
@@ -67,6 +76,8 @@ def save_state(
     state: training_utils.TrainState,
     data_loader: _data_loader.DataLoader,
     step: int,
+    *,
+    save_weights_only: bool = False,
 ):
     def save_assets(directory: epath.Path):
         # Save the normalization stats.
@@ -80,9 +91,12 @@ def save_state(
         train_state, params = _split_params(state)
     items = {
         "assets": save_assets,
-        "train_state": train_state,
         "params": {"params": params},
     }
+
+    if not save_weights_only:
+        items["train_state"] = train_state
+
     checkpoint_manager.save(step, items)
 
 
