@@ -18,6 +18,15 @@ def make_auto_stack_example() -> dict:
     }
 
 
+def _parse_image(image) -> np.ndarray:
+    image = np.asarray(image)
+    if np.issubdtype(image.dtype, np.floating):
+        image = (255 * image).astype(np.uint8)
+    if image.shape[0] == 3:
+        image = einops.rearrange(image, "c h w -> h w c")
+    return image
+
+
 @dataclasses.dataclass(frozen=True)
 class AutoStackInputs(transforms.DataTransformFn):
     """Inputs for the AutoStack policy.
@@ -65,8 +74,8 @@ class AutoStackInputs(transforms.DataTransformFn):
         if "action" in data:
             inputs["actions"] = np.asarray(data["action"])
 
-        if "task" in data:
-            inputs["prompt"] = data["task"]
+        if "prompt" in data:
+            inputs["prompt"] = data["prompt"]
 
         return inputs
 
@@ -78,12 +87,3 @@ class AutoStackOutputs(transforms.DataTransformFn):
     def __call__(self, data: dict) -> dict:
         actions = np.asarray(data["actions"][..., :7])
         return {"actions": actions}
-
-
-def _parse_image(image) -> np.ndarray:
-    image = np.asarray(image)
-    if np.issubdtype(image.dtype, np.floating):
-        image = (255 * image).astype(np.uint8)
-    if image.shape[0] == 3:
-        image = einops.rearrange(image, "c h w -> h w c")
-    return image

@@ -357,6 +357,46 @@ class LeRobotLiberoDataConfig(DataConfigFactory):
 
 
 @dataclasses.dataclass(frozen=True)
+class LeRobotAutoStackDataConfig(DataConfigFactory):
+    """Configures a LeRobot AutoStack dataset for training and policy inference."""
+
+    action_sequence_keys: Sequence[str] = ("action",)
+
+    @override
+    def create(self, assets_dirs: pathlib.Path, model_config: _model.BaseModelConfig) -> DataConfig:
+        # LeRobot exposes the task instruction as ``prompt`` when
+        # ``prompt_from_task`` is enabled. Keep that key so training samples
+        # match the dictionary accepted by AutoStackInputs at inference.
+        repack_transform = _transforms.Group(
+            inputs=[
+                _transforms.RepackTransform(
+                    {
+                        "observation.state": "observation.state",
+                        "observation.images.top_camera": "observation.images.top_camera",
+                        "observation.images.wrist_camera": "observation.images.wrist_camera",
+                        "action": "action",
+                        "prompt": "prompt",
+                    }
+                )
+            ]
+        )
+
+        data_transforms = _transforms.Group(
+            inputs=[auto_stack_policy.AutoStackInputs(model_type=model_config.model_type.value)],
+            outputs=[auto_stack_policy.AutoStackOutputs()],
+        )
+        model_transforms = ModelTransformFactory()(model_config)
+
+        return dataclasses.replace(
+            self.create_base_config(assets_dirs, model_config),
+            repack_transforms=repack_transform,
+            data_transforms=data_transforms,
+            model_transforms=model_transforms,
+            action_sequence_keys=self.action_sequence_keys,
+        )
+
+
+@dataclasses.dataclass(frozen=True)
 class RLDSDroidDataConfig(DataConfigFactory):
     """
     Config for training on DROID, using RLDS data format (for efficient training on larger datasets).
@@ -946,14 +986,10 @@ _CONFIGS = [
     #
     TrainConfig(
         name="pi0_auto_stack",
-        model=pi0_config.Pi0Config(action_dim=7, action_horizon=10),
-        data=SimpleDataConfig(
+        model=pi0_config.Pi0Config(action_horizon=50),
+        data=LeRobotAutoStackDataConfig(
             repo_id="local/auto_stack",
             assets=AssetsConfig(asset_id="auto_stack"),
-            data_transforms=lambda model: _transforms.Group(
-                inputs=[auto_stack_policy.AutoStackInputs(model_type=model.model_type.value)],
-                outputs=[auto_stack_policy.AutoStackOutputs()],
-            ),
             base_config=DataConfig(
                 prompt_from_task=True,
             ),
@@ -963,17 +999,12 @@ _CONFIGS = [
     ),
     TrainConfig(
         name="pi05_auto_stack",
-        model=pi0_config.Pi0Config(pi05=True, action_horizon=10),
-        data=SimpleDataConfig(
+        model=pi0_config.Pi0Config(pi05=True, action_horizon=50),
+        data=LeRobotAutoStackDataConfig(
             repo_id="/zxk/my_openpi/auto_stack",
             assets=AssetsConfig(asset_id="/zxk/my_openpi/auto_stack"),
-            data_transforms=lambda model: _transforms.Group(
-                inputs=[auto_stack_policy.AutoStackInputs(model_type=model.model_type.value)],
-                outputs=[auto_stack_policy.AutoStackOutputs()],
-            ),
             base_config=DataConfig(
                 prompt_from_task=True,
-                action_sequence_keys=("action",),
             ),
         ),
         batch_size=32,
